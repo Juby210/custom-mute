@@ -1,0 +1,7 @@
+{
+    "name": "Custom Mute",
+    "description": "Custom mute duration from 1 minute to over 100 hours.",
+    "author": "Juby210#0577",
+    "version": "1.0.0",
+    "license": "MIT"
+}
