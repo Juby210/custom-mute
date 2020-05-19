@@ -40,6 +40,7 @@ module.exports = class CustomMute extends Plugin {
         const submenu = findInReactTree(res, c => c.id == 'mute-channel')
         if (!submenu) return res
         submenu.children.push(this.customMuteGroup(channel.guild_id, channel.id))
+
         return res
     }
 
@@ -53,10 +54,12 @@ module.exports = class CustomMute extends Plugin {
             React.createElement(Menu.MenuSeparator),
             React.createElement(Menu.MenuControlItem, {
                 control: () => React.createElement(Slider, { className, mini: true, initialValue: 0, onValueChange: val => h = Math.round(val) }),
+                id: 'cmhours',
                 label: 'Hours'
             }),
             React.createElement(Menu.MenuControlItem, {
                 control: () => React.createElement(Slider, { className, mini: true, initialValue: 0, onValueChange: val => m = Math.round(val) }),
+                id: 'cmmin',
                 label: 'Minutes'
             }),
             React.createElement(Menu.MenuItem, {
@@ -69,6 +72,7 @@ module.exports = class CustomMute extends Plugin {
                     else mod.updateNotificationSettings(gid, this.getMuteConfig(h, m))
                     if (returnValues) return returnValues(h, m)
                 },
+                id: 'cmapply',
                 label: 'Apply'
             })
         ]
