@@ -4,33 +4,29 @@ const { getAllModules, getModule, getModuleByDisplayName, React } = require('pow
 const { inject, uninject } = require('powercord/injector')
 
 module.exports = class CustomMute extends Plugin {
-    injections = ['cmdm', 'cmgroup', 'cmguild']
+    injections = ['cmguild', 'cminbox']
 
     async startPlugin() {
-        const DMUserContextMenu = await getModule(m => m.default && m.default.displayName == 'DMUserContextMenu')
-        inject('cmdm', DMUserContextMenu, 'default', (args, res) => this.processChannelContextMenu(args[0].channel, res))
-        DMUserContextMenu.default.displayName = 'DMUserContextMenu'
-
-        const GroupDMContextMenu = await getModule(m => m.default && m.default.displayName == 'GroupDMContextMenu')
-        inject('cmgroup', GroupDMContextMenu, 'default', (args, res) => this.processChannelContextMenu(args[0].channel, res))
-        GroupDMContextMenu.default.displayName = 'GroupDMContextMenu'
-
-        const channelComponents = await getAllModules(m => m.default && m.default.displayName == 'ChannelListTextChannelContextMenu')
-        channelComponents.forEach((c, i) => {
-            this.injections.push(`cmchannel${i}`)
-            inject(`cmchannel${i}`, c, 'default', (args, res) => this.processChannelContextMenu(args[0].channel, res))
-            c.default.displayName = 'ChannelListTextChannelContextMenu'
+        const channelComponents = ['ChannelListTextChannelContextMenu', 'DMUserContextMenu', 'GroupDMContextMenu']
+        channelComponents.forEach(async displayName => {
+            (await getAllModules(m => m.default && m.default.displayName == displayName)).forEach((m, i) => {
+                const inj = `cm-${displayName}-${i}`
+                this.injections.push(inj)
+                inject(inj, m, 'default', (args, res) => this.processChannelContextMenu(args[0].channel, res))
+                m.default.displayName = displayName
+            })
         })
 
         const GuildContextMenu = await getModule(m => m.default && m.default.displayName == 'GuildContextMenu')
-        inject('cmguild', GuildContextMenu, 'default', (args, res) => {
-            const submenu = findInReactTree(res, c => c.id == 'mute-guild')
-            if (!submenu) return res
-            submenu.children.push(this.customMuteGroup(args[0].guild.id))
-
-            return res
-        })
+        inject('cmguild', GuildContextMenu, 'default', (args, res) => this.processGuildContextMenu(args[0].guild, res))
         GuildContextMenu.default.displayName = 'GuildContextMenu'
+
+        const RecentsNotificationSettingsContextMenu = await getModule(m => m.default && m.default.displayName == 'RecentsNotificationSettingsContextMenu')
+        inject('cminbox', RecentsNotificationSettingsContextMenu, 'default', (args, res) => {
+            res = this.processChannelContextMenu(args[0].channel, res)
+            if (!args[0].channel.guild_id) return res
+            return this.processGuildContextMenu({ id: args[0].channel.guild_id }, res)
+        })
     }
 
     pluginWillUnload = () => this.injections.forEach(i => uninject(i))
@@ -43,26 +39,40 @@ module.exports = class CustomMute extends Plugin {
 
         return res
     }
+    processGuildContextMenu(guild, res) {
+        if (!guild) return res
+        const submenu = findInReactTree(res, c => c.id == 'mute-guild')
+        if (!submenu) return res
+        submenu.children.push(this.customMuteGroup(guild.id))
+
+        return res
+    }
 
     customMuteGroup(gid, id, returnValues, mute) {
-        const { slider: className } = getModule(['slider', 'sliderContainer'], false)
-        const Menu = getModule(['MenuGroup', 'MenuItem'], false)
+        const c = getModule(['slider', 'sliderContainer'], false)
+        const { MenuControlItem, MenuItem, MenuSeparator } = getModule(['MenuGroup', 'MenuItem'], false)
         const Slider = getModuleByDisplayName('Slider', false)
 
         let h = 0, m = 0
         return [
-            React.createElement(Menu.MenuSeparator),
-            React.createElement(Menu.MenuControlItem, {
-                control: () => React.createElement(Slider, { className, mini: true, initialValue: 0, onValueChange: val => h = Math.round(val) }),
+            React.createElement(MenuSeparator),
+            React.createElement(MenuControlItem, {
+                control: () => React.createElement('div', { className: c.sliderContainer },
+                    React.createElement(Slider, { className: c.slider, mini: true, initialValue: 0, onValueChange: val => h = Math.round(val),
+                        onValueRender: val => React.createElement('span', null, Math.round(val) + ' h') })
+                ),
                 id: 'cmhours',
                 label: 'Hours'
             }),
-            React.createElement(Menu.MenuControlItem, {
-                control: () => React.createElement(Slider, { className, mini: true, initialValue: 0, onValueChange: val => m = Math.round(val) }),
+            React.createElement(MenuControlItem, {
+                control: () => React.createElement('div', { className: c.sliderContainer },
+                    React.createElement(Slider, { className: c.slider, mini: true, initialValue: 0, onValueChange: val => m = Math.round(val),
+                        onValueRender: val => React.createElement('span', null, `${Math.round(val)} min${Math.round(val) == 1 ? '' : 's'}`) })
+                ),
                 id: 'cmmin',
                 label: 'Minutes'
             }),
-            React.createElement(Menu.MenuItem, {
+            React.createElement(MenuItem, {
                 action: () => {
                     if (!h && !m) return
                     if (returnValues && !mute) return returnValues(h, m)
