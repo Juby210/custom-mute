@@ -27,6 +27,7 @@ module.exports = class CustomMute extends Plugin {
             if (!args[0].channel.guild_id) return res
             return this.processGuildContextMenu({ id: args[0].channel.guild_id }, res)
         })
+        RecentsNotificationSettingsContextMenu.default.displayName = 'RecentsNotificationSettingsContextMenu'
     }
 
     pluginWillUnload = () => this.injections.forEach(i => uninject(i))
