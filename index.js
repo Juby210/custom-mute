@@ -78,9 +78,9 @@ module.exports = class CustomMute extends Plugin {
                     if (!h && !m) return
                     if (returnValues && !mute) return returnValues(h, m)
 
-                    const mod = getModule(['updateNotificationSettings'], false)
+                    const mod = getModule(['updateChannelOverrideSettings'], false)
                     if (id) mod.updateChannelOverrideSettings(gid, id, this.getMuteConfig(h, m))
-                    else mod.updateNotificationSettings(gid, this.getMuteConfig(h, m))
+                    else mod.updateGuildNotificationSettings(gid, this.getMuteConfig(h, m))
                     if (returnValues) return returnValues(h, m)
                 },
                 id: 'cmapply',
